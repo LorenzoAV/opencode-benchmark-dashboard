@@ -9,6 +9,7 @@
     "build:dashboard": "esbuild public/dashboard.ts --bundle --outfile=public/dashboard.js --format=iife --target=es2020"
   },
   "dependencies": {
+    "@opencode-ai/sdk": "1.18.16",
     "chokidar": "^3.6.0"
   },
   "devDependencies": {
