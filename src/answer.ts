@@ -1,4 +1,5 @@
-import { parseArgs, checkOpencodeCli, runOpencode, ensureDir, sanitizeModelName, loadExistingResults, mergeResults, SOLUTIONS_DIR, RESULTS_DIR } from "./utils.ts";
+import { parseArgs, checkOpencodeCli, runOpencode, ensureDir, sanitizeModelName, SOLUTIONS_DIR, RESULTS_DIR } from "./utils.ts";
+import { loadExistingResults, mergeResults } from "./results.ts";
 import { loadConfig } from "./config.ts";
 import { join } from "path";
 import { existsSync, writeFileSync } from "fs";

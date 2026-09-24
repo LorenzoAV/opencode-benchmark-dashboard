@@ -1,5 +1,5 @@
 import type { BenchmarkConfig } from "./types.ts";
-import { levenshteinDistance, normalizeCode } from "./utils.ts";
+import { levenshteinDistance, normalizeCode } from "./compare.ts";
 
 export interface VerificationResult {
   correct: boolean;

@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, readFileSync } from "fs";
-import { resolve, join } from "path";
-import type { RunSummary } from "./types.ts";
+import { existsSync, mkdirSync } from "fs";
+import { resolve } from "path";
 import { parseOpencodeJsonOutput } from "./opencode-output.ts";
+import { validateModelName } from "./compare.ts";
 
 export const SOLUTIONS_DIR = resolve("./solutions");
 export const RESULTS_DIR = resolve("./results");
@@ -25,29 +25,6 @@ export function sanitizeModelName(model: string): string {
 
 export function generateRunId(): string {
   return `run_${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}`;
-}
-
-export function loadExistingResults(model: string): RunSummary | null {
-  const sanitized = sanitizeModelName(model);
-  const resultPath = join(RESULTS_DIR, `${sanitized}.json`);
-  
-  if (!existsSync(resultPath)) {
-    return null;
-  }
-
-  const content = readFileSync(resultPath, "utf-8");
-  try {
-    const parsed = JSON.parse(content);
-    if (isRunSummary(parsed)) {
-      return parsed;
-    } else {
-      console.error(`❌ Invalid result format in ${resultPath}`);
-      return null;
-    }
-  } catch (e) {
-    console.error(`❌ Failed to parse ${resultPath}:`, e);
-    return null;
-  }
 }
 
 export interface SpawnResult {
@@ -154,120 +131,4 @@ export async function checkOpencodeCli(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/**
- * Calculate Levenshtein distance between two strings
- */
-export function levenshteinDistance(a: string, b: string): number {
-  const matrix: number[][] = [];
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
-
-/**
- * Normalize code string for fuzzy comparison
- */
-export function normalizeCode(code: string): string {
-  return code
-    .replace(/\s+/g, " ")
-    .replace(/\s*([(){}:,])\s*/g, "$1")
-    .trim()
-    .toLowerCase();
-}
-
-/**
- * Validate model name to prevent command injection
- */
-export function validateModelName(model: string): boolean {
-  // Allow alphanumeric, slashes, colons, hyphens, underscores, dots
-  // This is a basic validation - adjust pattern based on your model naming conventions
-  const pattern = /^[a-zA-Z0-9_\-\.\/:]+$/;
-  return pattern.test(model) && model.length > 0 && model.length <= 100;
-}
-
-/**
- * Type guard for BenchmarkResult
- */
-export function isBenchmarkResult(obj: any): obj is import("./types.ts").BenchmarkResult {
-  return (
-    obj &&
-    typeof obj === "object" &&
-    typeof obj.testCase === "string" &&
-    typeof obj.model === "string" &&
-    typeof obj.latencyMs === "number" &&
-    typeof obj.correct === "boolean" &&
-    typeof obj.score === "number" &&
-    typeof obj.output === "string" &&
-    typeof obj.expected === "string" &&
-    (obj.error === undefined || typeof obj.error === "string")
-  );
-}
-
-/**
- * Type guard for RunSummary
- */
-export function mergeResults(existing: import("./types.ts").RunSummary, newResults: import("./types.ts").BenchmarkResult[]): import("./types.ts").RunSummary {
-  const resultsMap = new Map<string, import("./types.ts").BenchmarkResult>();
-  
-  for (const r of existing.results) {
-    resultsMap.set(`${r.model}|${r.testCase}`, r);
-  }
-  
-  for (const r of newResults) {
-    resultsMap.set(`${r.model}|${r.testCase}`, r);
-  }
-  
-  const mergedResults = Array.from(resultsMap.values());
-  
-  const passed = mergedResults.filter(r => r.correct).length;
-  const failed = mergedResults.length - passed;
-  
-  const avgLatency = mergedResults.reduce((sum, r) => sum + r.latencyMs, 0) / mergedResults.length;
-  
-  const modelStats: import("./types.ts").ModelStats[] = [{
-    model: existing.modelStats[0]?.model || newResults[0]?.model || "",
-    totalTests: mergedResults.length,
-    passed,
-    failed,
-    avgLatencyMs: Math.round(avgLatency),
-    accuracy: Math.round((passed / mergedResults.length) * 100)
-  }];
-
-  return {
-    ...existing,
-    totalTests: mergedResults.length,
-    passed,
-    failed,
-    results: mergedResults,
-    modelStats
-  };
-}
-
-export function isRunSummary(obj: any): obj is import("./types.ts").RunSummary {
-  if (!obj || typeof obj !== "object") return false;
-  return (
-    typeof obj.runId === "string" &&
-    typeof obj.timestamp === "string" &&
-    typeof obj.totalTests === "number" &&
-    typeof obj.passed === "number" &&
-    typeof obj.failed === "number" &&
-    Array.isArray(obj.results) &&
-    obj.results.every(isBenchmarkResult) &&
-    Array.isArray(obj.modelStats)
-  );
 }

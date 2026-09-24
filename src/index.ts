@@ -1,4 +1,5 @@
-import { parseArgs, checkOpencodeCli, loadExistingResults } from "./utils.ts";
+import { parseArgs, checkOpencodeCli } from "./utils.ts";
+import { loadExistingResults } from "./results.ts";
 
 async function main() {
   console.log("=".repeat(50));

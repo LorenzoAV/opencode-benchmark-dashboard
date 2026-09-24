@@ -2,7 +2,9 @@ import { readdirSync, readFileSync, writeFileSync, existsSync, statSync } from "
 import { resolve, join } from "path";
 import type { BenchmarkConfig, BenchmarkResult, RunSummary } from "./types.ts";
 import { loadConfig } from "./config.ts";
-import { sanitizeModelName, ensureDir, parseArgs, checkOpencodeCli, RESULTS_DIR, SOLUTIONS_DIR, levenshteinDistance, normalizeCode, isRunSummary } from "./utils.ts";
+import { sanitizeModelName, ensureDir, parseArgs, checkOpencodeCli, RESULTS_DIR, SOLUTIONS_DIR } from "./utils.ts";
+import { isRunSummary } from "./results.ts";
+import { levenshteinDistance, normalizeCode } from "./compare.ts";
 
 export interface EvaluationResult {
   correct: boolean;
