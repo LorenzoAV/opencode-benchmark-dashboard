@@ -33,6 +33,62 @@ export interface BenchmarkResult {
   expected: string;
   error?: string;
   llmVerification?: LLMVerification;
+  variant?: string;
+  effort?: string;
+  tokensIn?: number;
+  tokensOut?: number;
+  costUsd?: number;
+  costSource?: string;
+  providerFailureClass?: string | null;
+}
+
+export interface CaseOracle {
+  command: string;
+  cwd: string;
+  expectExit: number;
+  initialFails: boolean;
+  timeoutMs: number;
+  maxOutputTokens: number;
+}
+
+export type RubricSignal =
+  | "defect-id"
+  | "verdict-match"
+  | "citation-reachable"
+  | "quote-present"
+  | "judge";
+
+export interface RubricCriterion {
+  id: string;
+  weight: number;
+  signal: RubricSignal;
+}
+
+export interface CaseRubric {
+  criteria: RubricCriterion[];
+  anchorRef: string;
+}
+
+export interface CaseBudget {
+  maxOutputTokens: number;
+  maxCostUsd: number;
+}
+
+export interface CaseManifest {
+  id: string;
+  role: string;
+  prompt: string;
+  oracle?: CaseOracle;
+  rubric?: CaseRubric;
+  budget: CaseBudget;
+}
+
+export interface CellKey {
+  model: string;
+  variant: string;
+  effort: string;
+  case: string;
+  repetition: number;
 }
 
 export interface RunSummary {
