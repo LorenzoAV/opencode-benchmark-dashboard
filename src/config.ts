@@ -1,9 +1,10 @@
 import { readFileSync, readdirSync, existsSync } from "fs";
 import { resolve, join, basename } from "path";
-import type { BenchmarkConfig, TestCase } from "./types.ts";
+import type { BenchmarkConfig, CaseManifest, TestCase } from "./types.ts";
 
 const PROMPTS_DIR = resolve("./prompts");
 const ANSWERS_DIR = resolve("./prompts-answers");
+const CASES_DIR = resolve("./cases");
 
 interface RawBenchmarkConfig {
   timeout?: number;
@@ -41,6 +42,96 @@ function loadTestCasesFromFiles(): TestCase[] {
   }
 
   return testCases;
+}
+
+export interface CaseLoadError {
+  ok: false;
+  error: "manifest-not-found" | "manifest-malformed" | "manifest-invalid";
+  path: string;
+}
+
+export interface CaseLoadSuccess {
+  ok: true;
+  manifest: CaseManifest;
+}
+
+export type CaseLoadResult = CaseLoadSuccess | CaseLoadError;
+
+export type LoadedCase =
+  | { id: string; kind: "manifest"; manifest: CaseManifest }
+  | { id: string; kind: "prompt"; testCase: TestCase }
+  | { id: string; kind: "missing" };
+
+export interface CaseDirs {
+  casesDir?: string;
+  promptsDir?: string;
+  answersDir?: string;
+}
+
+function isValidManifest(value: any): value is CaseManifest {
+  return (
+    value &&
+    typeof value === "object" &&
+    typeof value.id === "string" &&
+    typeof value.role === "string" &&
+    typeof value.prompt === "string" &&
+    value.budget &&
+    typeof value.budget === "object" &&
+    typeof value.budget.maxOutputTokens === "number" &&
+    typeof value.budget.maxCostUsd === "number"
+  );
+}
+
+/** Loads cases/<id>/case.json. Returns a named error instead of throwing. */
+export function loadCaseManifest(caseDir: string): CaseLoadResult {
+  const manifestPath = join(caseDir, "case.json");
+  if (!existsSync(manifestPath)) {
+    return { ok: false, error: "manifest-not-found", path: manifestPath };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  } catch {
+    return { ok: false, error: "manifest-malformed", path: manifestPath };
+  }
+
+  if (!isValidManifest(parsed)) {
+    return { ok: false, error: "manifest-invalid", path: manifestPath };
+  }
+  return { ok: true, manifest: parsed };
+}
+
+function loadTestCaseById(id: string, promptsDir: string, answersDir: string): TestCase | null {
+  const promptPath = join(promptsDir, `${id}.txt`);
+  if (!existsSync(promptPath)) {
+    return null;
+  }
+  const answerPath = join(answersDir, `${id}.txt`);
+  return {
+    id,
+    prompt: readFileSync(promptPath, "utf-8").trim(),
+    expected: existsSync(answerPath) ? readFileSync(answerPath, "utf-8").trim() : "",
+    language: "python"
+  };
+}
+
+/** Prefers a case manifest; falls back to the prompt pair loader of prompts/. */
+export function loadCase(id: string, dirs: CaseDirs = {}): LoadedCase {
+  const casesDir = dirs.casesDir ?? CASES_DIR;
+  const promptsDir = dirs.promptsDir ?? PROMPTS_DIR;
+  const answersDir = dirs.answersDir ?? ANSWERS_DIR;
+
+  const manifestResult = loadCaseManifest(join(casesDir, id));
+  if (manifestResult.ok) {
+    return { id, kind: "manifest", manifest: manifestResult.manifest };
+  }
+
+  const testCase = loadTestCaseById(id, promptsDir, answersDir);
+  if (testCase) {
+    return { id, kind: "prompt", testCase };
+  }
+  return { id, kind: "missing" };
 }
 
 export function loadConfig(configPath?: string): BenchmarkConfig {

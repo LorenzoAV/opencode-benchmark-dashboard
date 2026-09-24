@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync } from "fs";
 import { resolve, join } from "path";
 import type { RunSummary } from "./types.ts";
+import { parseOpencodeJsonOutput } from "./opencode-output.ts";
 
 export const SOLUTIONS_DIR = resolve("./solutions");
 export const RESULTS_DIR = resolve("./results");
@@ -55,11 +56,21 @@ export interface SpawnResult {
   exitCode: number;
 }
 
+export interface RunOpencodeResult {
+  output: string;
+  error?: string;
+  latencyMs?: number;
+  tokensIn?: number | null;
+  tokensOut?: number | null;
+  costUsd?: number | null;
+  costSource?: string | null;
+}
+
 export async function runOpencode(
   prompt: string,
   model: string,
   timeout: number
-): Promise<{ output: string; error?: string; latencyMs?: number }> {
+): Promise<RunOpencodeResult> {
   // Validate model name to prevent command injection
   if (!validateModelName(model)) {
     return { output: "", error: `Invalid model name: ${model}` };
@@ -67,7 +78,7 @@ export async function runOpencode(
 
   try {
     const startTime = Date.now();
-    const proc = Bun.spawn(["opencode", "run", "--model", model, prompt], {
+    const proc = Bun.spawn(["opencode", "run", "--format", "json", "--model", model, prompt], {
       env: { ...process.env, OPENCODE_MODEL: model },
       stdout: "pipe",
       stderr: "pipe"
@@ -85,11 +96,12 @@ export async function runOpencode(
       }, timeout);
     });
 
-    const outputPromise = (async (): Promise<{ output: string; error?: string; latencyMs: number }> => {
+    const outputPromise = (async (): Promise<RunOpencodeResult> => {
       const stdout = await new Response(proc.stdout).text();
       const stderr = await new Response(proc.stderr).text();
       const exitCode = await proc.exited;
       const latencyMs = Date.now() - startTime;
+      const parsed = parseOpencodeJsonOutput(stdout);
       
       if (killed) {
         return { output: "", error: "Timeout", latencyMs };
@@ -97,9 +109,9 @@ export async function runOpencode(
       
       const hasError = stderr.includes("Error:") || stderr.includes("error:") || exitCode !== 0;
       if (!hasError) {
-        return { output: stdout, error: undefined, latencyMs };
+        return { output: parsed.output, error: undefined, latencyMs, ...parsed.usage };
       } else {
-        return { output: stdout, error: stderr || `Exit code: ${exitCode}`, latencyMs };
+        return { output: parsed.output, error: stderr || `Exit code: ${exitCode}`, latencyMs, ...parsed.usage };
       }
     })();
 
