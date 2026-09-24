@@ -1,0 +1,17 @@
+{
+  "id": "CODING-typescript-rust",
+  "role": "coder",
+  "prompt": "Convert the TypeScript function longer to Rust and make the fixture tests pass.",
+  "oracle": {
+    "command": "cargo test",
+    "cwd": "fixture",
+    "expectExit": 0,
+    "initialFails": true,
+    "timeoutMs": 120000,
+    "maxOutputTokens": 4000
+  },
+  "budget": {
+    "maxOutputTokens": 4000,
+    "maxCostUsd": 0.1
+  }
+}

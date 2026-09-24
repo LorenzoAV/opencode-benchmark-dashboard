@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { join, resolve } from "path";
 import { loadCaseManifest, loadCase } from "./config.ts";
 import type { CaseManifest } from "./types.ts";
 
@@ -104,5 +104,26 @@ describe("case manifest loader", () => {
   test("loadCase reports a missing case when neither source has it", () => {
     const loaded = loadCase("nowhere", { casesDir, promptsDir, answersDir });
     expect(loaded.kind).toBe("missing");
+  });
+});
+
+describe("the promoted coding case", () => {
+  const caseDir = resolve("./cases", "CODING-typescript-rust");
+
+  test("the loader reads the new manifest with its oracle", () => {
+    const result = loadCaseManifest(caseDir);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.manifest.id).toBe("CODING-typescript-rust");
+    expect(result.manifest.role).toBe("coder");
+    expect(result.manifest.oracle?.command).toBe("cargo test");
+    expect(result.manifest.oracle?.expectExit).toBe(0);
+    expect(result.manifest.oracle?.initialFails).toBe(true);
+    expect(result.manifest.budget.maxOutputTokens).toBeGreaterThan(0);
+  });
+
+  test("loadCase prefers the promoted manifest over the prompt pair", () => {
+    const loaded = loadCase("CODING-typescript-rust", { casesDir: resolve("./cases") });
+    expect(loaded.kind).toBe("manifest");
   });
 });
