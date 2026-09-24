@@ -21,3 +21,6 @@ prompts-answers/
 
 # Dashboard static (if generated)
 dashboard/
+
+# Vault note (local only, never committed)
+VAULT.md
