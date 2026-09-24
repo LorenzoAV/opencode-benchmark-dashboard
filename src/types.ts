@@ -49,6 +49,7 @@ export interface CaseOracle {
   initialFails: boolean;
   timeoutMs: number;
   maxOutputTokens: number;
+  applyTo?: string;
 }
 
 export type RubricSignal =

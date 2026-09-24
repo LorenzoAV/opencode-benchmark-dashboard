@@ -5,6 +5,7 @@
   "oracle": {
     "command": "cargo test",
     "cwd": "fixture",
+    "applyTo": "src/lib.rs",
     "expectExit": 0,
     "initialFails": true,
     "timeoutMs": 120000,
