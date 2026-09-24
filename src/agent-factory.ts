@@ -40,6 +40,8 @@ export interface RunAgentCaseOptions {
   variantConfigDir: string;
   prompt: string;
   timeoutMs?: number;
+  /** A server already running for this variant. When given, runAgentCase does not close it. */
+  server?: { url: string; close(): void };
 }
 
 export interface AgentRunResult {
@@ -156,7 +158,7 @@ async function withConfigDir<T>(configDir: string, action: () => Promise<T>): Pr
   }
 }
 
-async function startVariantServer(configDir: string, timeoutMs: number): Promise<{ url: string; close(): void } | null> {
+export async function startVariantServer(configDir: string, timeoutMs: number): Promise<{ url: string; close(): void } | null> {
   try {
     return await withConfigDir(configDir, () =>
       createOpencodeServer({ hostname: "127.0.0.1", port: 0, timeout: timeoutMs }),
@@ -189,7 +191,10 @@ export async function runAgentCase(options: RunAgentCaseOptions): Promise<AgentR
     return { ok: false, error: "variant-missing", detail: agentFile };
   }
 
-  const server = await startVariantServer(options.variantConfigDir, options.timeoutMs ?? DEFAULT_SERVER_TIMEOUT_MS);
+  const owned = options.server
+    ? null
+    : await startVariantServer(options.variantConfigDir, options.timeoutMs ?? DEFAULT_SERVER_TIMEOUT_MS);
+  const server = options.server ?? owned;
   if (!server) return { ok: false, error: "server-start-failed", detail: options.variantConfigDir };
 
   try {
@@ -229,6 +234,6 @@ export async function runAgentCase(options: RunAgentCaseOptions): Promise<AgentR
       },
     };
   } finally {
-    server.close();
+    if (owned) owned.close();
   }
 }
