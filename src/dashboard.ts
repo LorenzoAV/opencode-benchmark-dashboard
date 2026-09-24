@@ -2,8 +2,10 @@ import { readdirSync, readFileSync, existsSync } from "fs";
 import { resolve, join } from "path";
 import type { RunSummary, DashboardData, ModelResult, LLMVerification } from "./types.ts";
 import { sanitizeModelName } from "./utils.ts";
+import { readRegistryFile, summarizeRegistry } from "./registry.ts";
 
 const RESULTS_DIR = resolve("./results");
+const REGISTRY_PATH = resolve("./results/registry.jsonl");
 const PUBLIC_DIR = resolve("./public");
 const PROMPTS_DIR = resolve("./prompts");
 const PORT = 3000;
@@ -203,6 +205,11 @@ function loadModelData(): Map<string, ModelData> {
   return modelMap;
 }
 
+function loadRegistry() {
+  const { records, skipped } = readRegistryFile(REGISTRY_PATH);
+  return { records, summary: summarizeRegistry(records), skipped };
+}
+
 function getContentType(path: string): string {
   const ext = path.split('.').pop()?.toLowerCase();
   const types: Record<string, string> = {
@@ -260,6 +267,12 @@ async function startDashboard() {
       
       if (url.pathname === "/api/models") {
         return new Response(JSON.stringify(Object.fromEntries(modelData)), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      
+      if (url.pathname === "/api/registry") {
+        return new Response(JSON.stringify(loadRegistry()), {
           headers: { "Content-Type": "application/json" }
         });
       }

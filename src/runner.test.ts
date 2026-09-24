@@ -2,6 +2,12 @@ import { describe, test, expect } from "bun:test";
 import { verify } from "./verifier";
 import { loadConfig } from "./config";
 import { sanitizeModelName, parseArgs, ensureDir, generateRunId, checkOpencodeCli } from "./utils";
+import { buildCells, filterCells } from "./grid";
+import { runCells } from "./grid-runner";
+import type { CellRunnerDeps } from "./grid-runner";
+import { serializeRegistryLine, parseRegistryLines, summarizeRegistry } from "./registry";
+import type { RegistryRecord } from "./registry";
+import type { ModelCostEntry, CellCostBudget } from "./cost-gate";
 import { existsSync } from "fs";
 import { resolve } from "path";
 import { rmSync } from "fs";
@@ -229,5 +235,78 @@ describe("loadConfig", () => {
     if (existsSync(resolve("./prompts"))) {
       expect(config.testCases.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("integration: grid, gate, runner and registry", () => {
+  const freeEntry: ModelCostEntry = { route: "free", costSource: "registry", costPerMillion: { input: null, output: null } };
+  const budget: CellCostBudget = { maxOutputTokens: 1000, promptChars: 400, fixtureChars: 0 };
+
+  function runnerDeps(overrides: Partial<CellRunnerDeps> = {}): { deps: CellRunnerDeps; written: RegistryRecord[] } {
+    const written: RegistryRecord[] = [];
+    const deps: CellRunnerDeps = {
+      runId: "run-int",
+      engine: { commit: "test", opencodeVersion: "test" },
+      roleOf: () => "coder",
+      expectedExitOf: () => 0,
+      materialize: () => ({ configDir: "C:/tmp/variant", agentName: "coder" }),
+      runAgent: async () => ({ ok: true, result: { output: "pong", tokensIn: 12, tokensOut: 3, costUsd: 0, costSource: "provider" } }),
+      runOracle: async () => ({ ok: true, result: { command: "cargo test", exit: 0, durationMs: 9, initialFails: true, output: "ok", timedOut: false } }),
+      appendRecord: (record) => written.push(record),
+      now: () => "2026-09-24T00:00:00Z",
+      ...overrides,
+    };
+    return { deps, written };
+  }
+
+  test("builds a small grid, runs it, and the registry line keeps the extended shape", async () => {
+    const cells = buildCells({
+      models: ["opencode/big-pickle"],
+      variants: ["base", "strict"],
+      efforts: ["default"],
+      cases: ["CODING-typescript-rust"],
+      repetitions: [1],
+    });
+    const filtered = filterCells(cells, {
+      ladder: [{ name: "base", cellCap: 0.1, requiresAuthorization: false }],
+      stageOf: () => "base",
+      entryOf: () => freeEntry,
+      budgetOf: () => budget,
+      hasAuthorization: () => false,
+    });
+    expect(filtered.refused).toHaveLength(0);
+    expect(filtered.allowed).toHaveLength(2);
+
+    const { deps, written } = runnerDeps();
+    await runCells(filtered.allowed, deps);
+    expect(written).toHaveLength(2);
+
+    const parsed = parseRegistryLines(written.map(serializeRegistryLine).join("\n"));
+    expect(parsed.skipped).toBe(0);
+    expect(parsed.records).toHaveLength(2);
+    expect(parsed.records[0].cell.variant).toBe("base");
+    expect(parsed.records[0].cell.role).toBe("coder");
+    expect(parsed.records[0].usage.tokensIn).toBe(12);
+    expect(parsed.records[0].usage.tokensOut).toBe(3);
+    expect(parsed.records[0].result.correct).toBe(true);
+    expect(parsed.records[0].result.oracle?.command).toBe("cargo test");
+  });
+
+  test("the summary groups the registry lines by model", async () => {
+    const cells = buildCells({ models: ["m1", "m2"], variants: ["base"], efforts: ["default"], cases: ["c1"], repetitions: [1] });
+    const { deps, written } = runnerDeps();
+    await runCells(cells, deps);
+    const summary = summarizeRegistry(written);
+    expect(summary.byModel.map((entry) => entry.key).sort()).toEqual(["m1", "m2"]);
+    expect(summary.byModel[0].correct).toBe(1);
+  });
+
+  test("the factory guard refuses the cell and the registry line records the reason", async () => {
+    const cells = buildCells({ models: ["m"], variants: ["base"], efforts: ["default"], cases: ["c1"], repetitions: [1] });
+    const { deps, written } = runnerDeps({ runAgent: async () => ({ ok: false, error: "variant-not-loaded" }) });
+    await runCells(cells, deps);
+    const parsed = parseRegistryLines(serializeRegistryLine(written[0]));
+    expect(parsed.records[0].result.refused).toBe(true);
+    expect(parsed.records[0].result.reason).toBe("variant-not-loaded");
   });
 });

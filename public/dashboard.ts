@@ -1,3 +1,5 @@
+import { loadRegistry, renderRegistry } from './registry-view';
+
 interface LLMVerification {
   verifiedBy: string;
   timestamp: string;
@@ -536,4 +538,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   createChart();
   updateStats({ runs: [], models });
   renderHeatmap();
+
+  try {
+    renderRegistry(await loadRegistry());
+  } catch (e) {
+    console.error('Failed to load registry:', e);
+  }
 });
