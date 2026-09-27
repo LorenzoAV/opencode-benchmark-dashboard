@@ -1,0 +1,23 @@
+{
+  "id": "SCREEN-ui",
+  "role": "screener",
+  "prompt": "Review six UI screenshots for injected visual defects (truncation, overlap, low-contrast) and report the defect region.",
+  "media": [
+    "shot-01.png",
+    "shot-02.png",
+    "shot-03.png",
+    "shot-04.png",
+    "shot-05.png",
+    "shot-06.png"
+  ],
+  "oracle": {
+    "command": "node oracle.mjs out.txt",
+    "cwd": "fixture",
+    "applyTo": "out.txt",
+    "expectExit": 0,
+    "initialFails": true,
+    "timeoutMs": 30000,
+    "maxOutputTokens": 2048
+  },
+  "budget": { "maxOutputTokens": 2048, "maxCostUsd": 0.05 }
+}
