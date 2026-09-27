@@ -1,0 +1,45 @@
+{
+  "f1Threshold": 0.6,
+  "vulnerabilities": [
+    {
+      "id": "sql-injection",
+      "cwe": "CWE-89",
+      "vector": "SQL injection",
+      "file": "src/service.js",
+      "line": 25,
+      "keywords": ["sql injection", "sqli", "sql-injection", "cwe-89", "concatenat", "string concatenation", "parameterized", "prepared statement", "inyeccion sql", "inyección sql", "injection"]
+    },
+    {
+      "id": "command-injection",
+      "cwe": "CWE-78",
+      "vector": "Command injection",
+      "file": "src/service.js",
+      "line": 31,
+      "keywords": ["command injection", "command-injection", "cwe-78", "os command", "exec(", "the shell", "shell", "sanitize", "inyeccion de comando", "inyección de comando", "injection"]
+    },
+    {
+      "id": "hardcoded-secret",
+      "cwe": "CWE-798",
+      "vector": "Hardcoded secret",
+      "file": "src/service.js",
+      "line": 11,
+      "keywords": ["hardcoded", "hard-coded", "hard coded", "secret", "credential", "api_token", "api token", "sk-live", "cwe-798", "plaintext", "secreto", "clave"]
+    },
+    {
+      "id": "path-traversal",
+      "cwe": "CWE-22",
+      "vector": "Path traversal",
+      "file": "src/service.js",
+      "line": 36,
+      "keywords": ["path traversal", "path-traversal", "directory traversal", "cwe-22", "path.join", "canonical", "unvalidated path", "traversal", "recorrido de ruta", "recorrido de rutas"]
+    },
+    {
+      "id": "missing-authorization",
+      "cwe": "CWE-862",
+      "vector": "Missing authorization / broken access control",
+      "file": "src/service.js",
+      "line": 45,
+      "keywords": ["authorization", "authorisation", "missing auth", "access control", "cwe-862", "unauthenticated", "unprotected", "authz", "broken access", "sin control de autorizacion", "sin control de autorización", "admin"]
+    }
+  ]
+}

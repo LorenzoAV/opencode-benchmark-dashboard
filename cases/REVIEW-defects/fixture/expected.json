@@ -1,0 +1,35 @@
+{
+  "f1Threshold": 0.6,
+  "defects": [
+    {
+      "id": "long-function",
+      "file": "src/order-service.ts",
+      "line": 18,
+      "keywords": ["20", "p5", "exceed", "too long", "length", "long function", "small function", "split"]
+    },
+    {
+      "id": "unexplained-name",
+      "file": "src/order-service.ts",
+      "line": 28,
+      "keywords": ["intent", "naming", "name", "p4", "descriptive", "meaningful", "single-letter", "single letter", "reveal"]
+    },
+    {
+      "id": "magic-number",
+      "file": "src/order-service.ts",
+      "line": 29,
+      "keywords": ["magic", "9999", "constant", "p4", "named constant"]
+    },
+    {
+      "id": "swallowed-exception",
+      "file": "src/order-service.ts",
+      "line": 53,
+      "keywords": ["swallow", "silent", "ignore", "empty catch", "discard", "error handling", "catch", "does nothing"]
+    },
+    {
+      "id": "skipped-test",
+      "file": "src/order-service.test.ts",
+      "line": 11,
+      "keywords": ["skip", "p3", "w4", "pending", "disabled"]
+    }
+  ]
+}
